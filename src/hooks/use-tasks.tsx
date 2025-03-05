@@ -33,8 +33,8 @@ export function useTasks() {
         title: task.title,
         description: task.description,
         dueDate: new Date(task.due_date),
-        priority: task.priority as Priority,
-        status: task.status as TaskStatus,
+        priority: task.priority as Priority,  // Explicitly cast to Priority type
+        status: task.status as TaskStatus,    // Explicitly cast to TaskStatus type
         assignedTo: task.assigned_to,
         createdBy: task.created_by,
         createdAt: new Date(task.created_at),
@@ -83,8 +83,8 @@ export function useTasks() {
         title: data.title,
         description: data.description,
         dueDate: new Date(data.due_date),
-        priority: data.priority,
-        status: data.status,
+        priority: data.priority as Priority,  // Explicitly cast to Priority type
+        status: data.status as TaskStatus,    // Explicitly cast to TaskStatus type
         assignedTo: data.assigned_to,
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
