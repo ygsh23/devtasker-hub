@@ -22,3 +22,18 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface Profile {
+  id: string;
+  name: string;
+  avatar_url?: string;
+}
+
+export interface Notification {
+  id: string;
+  task_id: string;
+  recipient_email: string;
+  sent_at: Date;
+  status: 'pending' | 'sent' | 'failed';
+  message?: string;
+}

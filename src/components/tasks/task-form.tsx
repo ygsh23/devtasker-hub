@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -29,26 +30,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaskFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: Task;
-  onSubmit: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
+  onSubmit: (task: Omit<Task, "id" | "createdAt" | "updatedAt" | "createdBy">) => void;
 }
 
-const initialTask: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
+const initialTask: Omit<Task, "id" | "createdAt" | "updatedAt" | "createdBy"> = {
   title: "",
   description: "",
   dueDate: new Date(),
   priority: "medium",
   status: "todo",
   assignedTo: "",
-  createdBy: "",
 };
 
 export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) {
-  const [formData, setFormData] = React.useState<Omit<Task, "id" | "createdAt" | "updatedAt">>(
+  const [formData, setFormData] = React.useState<Omit<Task, "id" | "createdAt" | "updatedAt" | "createdBy">>(
     task ? 
       {
         title: task.title,
@@ -57,12 +58,14 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
         priority: task.priority,
         status: task.status,
         assignedTo: task.assignedTo,
-        createdBy: task.createdBy,
       } : 
       initialTask
   );
   const [isLoading, setIsLoading] = React.useState(false);
+  const [users, setUsers] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [loadingUsers, setLoadingUsers] = React.useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   // Reset form when dialog opens/closes or task changes
   React.useEffect(() => {
@@ -76,12 +79,35 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
             priority: task.priority,
             status: task.status,
             assignedTo: task.assignedTo,
-            createdBy: task.createdBy,
           } :
-          initialTask
+          {
+            ...initialTask,
+            assignedTo: user?.id || ""
+          }
       );
+      fetchUsers();
     }
-  }, [open, task]);
+  }, [open, task, user]);
+  
+  // Fetch users for assignment dropdown
+  const fetchUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setUsers(data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
   
   // Handle form change
   const handleChange = (
@@ -114,33 +140,20 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
         throw new Error("Title is required");
       }
       
-      if (!formData.assignedTo.trim()) {
+      if (!formData.assignedTo) {
         throw new Error("Assignee is required");
       }
       
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Call onSubmit prop
-      onSubmit({
-        ...formData,
-        // Add current user as creator if it's a new task
-        createdBy: formData.createdBy || "current@user.com",
-      });
+      // Submit form
+      onSubmit(formData);
       
       // Close dialog
       onOpenChange(false);
-      
-      // Show success message
-      toast({
-        title: task ? "Task updated" : "Task created",
-        description: task ? "Your task has been updated" : "Your task has been created",
-      });
-    } catch (error) {
+    } catch (error: any) {
       // Show error message
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: error.message || "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -235,14 +248,25 @@ export function TaskForm({ open, onOpenChange, task, onSubmit }: TaskFormProps) 
           
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Assigned To</Label>
-            <Input
-              id="assignedTo"
-              name="assignedTo"
+            <Select
               value={formData.assignedTo}
-              onChange={handleChange}
-              placeholder="Email address"
-              className="focus-ring"
-            />
+              onValueChange={(value) => handleSelectChange("assignedTo", value)}
+            >
+              <SelectTrigger id="assignedTo" className="focus-ring">
+                <SelectValue placeholder="Select User" />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingUsers ? (
+                  <div className="p-2 text-center text-sm">Loading users...</div>
+                ) : (
+                  users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           
           {task && (

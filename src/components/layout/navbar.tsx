@@ -1,6 +1,5 @@
 
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { 
   Bell, 
   Calendar, 
@@ -15,9 +14,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomButton } from "@/components/ui/custom-button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavbarProps {
-  user?: { name: string; email: string; avatarUrl?: string };
+  user?: { name: string; email?: string; avatar_url?: string };
 }
 
 export function Navbar({ user }: NavbarProps) {
@@ -25,7 +25,7 @@ export function Navbar({ user }: NavbarProps) {
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const profileRef = React.useRef<HTMLDivElement>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -42,12 +42,7 @@ export function Navbar({ user }: NavbarProps) {
   };
 
   const handleLogout = () => {
-    // In a real app, this would call Supabase auth.signOut()
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
-    navigate("/login");
+    signOut();
   };
 
   // Close menus when clicking outside
@@ -162,9 +157,9 @@ export function Navbar({ user }: NavbarProps) {
                   {user.name}
                 </span>
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  {user.avatarUrl ? (
+                  {user.avatar_url ? (
                     <img
-                      src={user.avatarUrl}
+                      src={user.avatar_url}
                       alt={user.name}
                       className="h-8 w-8 rounded-full object-cover"
                     />
@@ -208,7 +203,7 @@ export function Navbar({ user }: NavbarProps) {
               )}
             </div>
           ) : (
-            <CustomButton onClick={() => navigate("/login")}>
+            <CustomButton onClick={() => window.location.href = "/login"}>
               Sign in
             </CustomButton>
           )}

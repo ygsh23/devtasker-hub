@@ -1,7 +1,6 @@
 
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { CustomButton } from "@/components/ui/custom-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,41 +13,15 @@ export function AuthForm({ type }: AuthFormProps) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [name, setName] = React.useState("");
-  const [isLoading, setIsLoading] = React.useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { signIn, signUp, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      // In a real implementation, this would connect to Supabase
-      // For now, we'll just simulate a successful auth
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      if (type === "login") {
-        toast({
-          title: "Success",
-          description: "You have successfully logged in",
-        });
-        navigate("/");
-      } else {
-        toast({
-          title: "Account created",
-          description: "Please check your email for verification",
-        });
-        navigate("/login");
-      }
-    } catch (error) {
-      console.error("Authentication error:", error);
-      toast({
-        title: "Error",
-        description: type === "login" ? "Invalid credentials" : "Failed to create account",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    
+    if (type === "login") {
+      await signIn(email, password);
+    } else {
+      await signUp(email, password, name);
     }
   };
 
@@ -115,7 +88,7 @@ export function AuthForm({ type }: AuthFormProps) {
           />
         </div>
 
-        <CustomButton type="submit" fullWidth loading={isLoading}>
+        <CustomButton type="submit" fullWidth loading={loading}>
           {type === "login" ? "Sign In" : "Sign Up"}
         </CustomButton>
 

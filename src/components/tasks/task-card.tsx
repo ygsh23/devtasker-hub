@@ -4,6 +4,7 @@ import { Calendar, Clock, MoreHorizontal, User } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Task, Priority, TaskStatus } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaskCardProps {
   task: Task;
@@ -14,7 +15,27 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardProps) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [assignee, setAssignee] = React.useState<{name: string, email?: string} | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
+
+  // Fetch assignee details
+  React.useEffect(() => {
+    const fetchAssignee = async () => {
+      if (task.assignedTo) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', task.assignedTo)
+          .single();
+          
+        if (!error && data) {
+          setAssignee(data);
+        }
+      }
+    };
+    
+    fetchAssignee();
+  }, [task.assignedTo]);
 
   // Format the due date to display as "Jan 12" or similar
   const formattedDate = format(new Date(task.dueDate), "MMM d");
@@ -87,6 +108,8 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const displayName = assignee?.name || 'Unknown';
 
   return (
     <div className={cn(
@@ -168,7 +191,7 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <User size={14} />
-            <span>@{task.assignedTo.split('@')[0]}</span>
+            <span>{displayName}</span>
           </div>
           
           <div className="flex items-center">
