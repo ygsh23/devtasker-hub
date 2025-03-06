@@ -18,10 +18,13 @@ export function useTasks() {
       
       if (!user) return;
 
-      // Fixed the query to properly handle the relationship
+      // Update the query to handle the relationship properly
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, assigned_to:profiles(id, name, avatar_url)")
+        .select(`
+          *,
+          profiles:assigned_to(id, name, avatar_url)
+        `)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -34,10 +37,11 @@ export function useTasks() {
         title: task.title,
         description: task.description,
         dueDate: new Date(task.due_date),
-        priority: task.priority as Priority,  // Explicitly cast to Priority type
-        status: task.status as TaskStatus,    // Explicitly cast to TaskStatus type
-        assignedTo: task.assigned_to?.id || task.assigned_to, // Handle both object and string formats
-        assigneeName: task.assigned_to?.name || null, // Store assignee name for display
+        priority: task.priority as Priority,
+        status: task.status as TaskStatus,
+        assignedTo: task.assigned_to,
+        // Safely access assignee name by checking if profiles exists and is not null
+        assigneeName: task.profiles ? task.profiles.name : null,
         createdBy: task.created_by,
         createdAt: new Date(task.created_at),
         updatedAt: new Date(task.updated_at)
