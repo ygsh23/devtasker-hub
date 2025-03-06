@@ -18,36 +18,52 @@ export function useTasks() {
       
       if (!user) return;
 
-      // Update the query to handle the relationship properly
+      // First, fetch the tasks without trying to join with profiles
       const { data, error } = await supabase
         .from("tasks")
-        .select(`
-          *,
-          profiles:assigned_to(id, name, avatar_url)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
         throw error;
       }
 
-      // Transform Supabase data to match our Task type
-      const formattedTasks = data.map((task) => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        dueDate: new Date(task.due_date),
-        priority: task.priority as Priority,
-        status: task.status as TaskStatus,
-        assignedTo: task.assigned_to,
-        // Safely access assignee name by checking if profiles exists and is not null
-        assigneeName: task.profiles ? task.profiles.name : null,
-        createdBy: task.created_by,
-        createdAt: new Date(task.created_at),
-        updatedAt: new Date(task.updated_at)
-      }));
+      // If we have tasks with assignees, fetch their profiles separately
+      const tasksWithAssignees = [];
+      
+      for (const task of data) {
+        let assigneeName = null;
+        
+        // Only fetch profile if there's an assigned_to value
+        if (task.assigned_to) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', task.assigned_to)
+            .single();
+            
+          if (!profileError && profileData) {
+            assigneeName = profileData.name;
+          }
+        }
+        
+        // Transform Supabase data to match our Task type
+        tasksWithAssignees.push({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          dueDate: new Date(task.due_date),
+          priority: task.priority as Priority,
+          status: task.status as TaskStatus,
+          assignedTo: task.assigned_to,
+          assigneeName: assigneeName,
+          createdBy: task.created_by,
+          createdAt: new Date(task.created_at),
+          updatedAt: new Date(task.updated_at)
+        });
+      }
 
-      setTasks(formattedTasks);
+      setTasks(tasksWithAssignees);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       toast({
