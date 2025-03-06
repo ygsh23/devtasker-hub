@@ -18,6 +18,7 @@ export interface Task {
   priority: Priority;
   status: TaskStatus;
   assignedTo: string;
+  assigneeName?: string | null; // Add this field for display purposes
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;

@@ -26,6 +26,7 @@ serve(async (req) => {
 
     // Get task data from request
     const { taskId, message } = await req.json();
+    console.log("Received request for task notification:", { taskId, message });
 
     if (!taskId) {
       return new Response(
@@ -34,12 +35,13 @@ serve(async (req) => {
       );
     }
 
-    // Get task data from database
+    // Get task data from database - using direct task query with join
+    console.log("Fetching task data for ID:", taskId);
     const { data: task, error: taskError } = await supabase
       .from("tasks")
       .select(`
         *,
-        assigned_user:profiles!tasks_assigned_to_fkey(name)
+        profiles:assigned_to(name)
       `)
       .eq("id", taskId)
       .single();
@@ -47,10 +49,12 @@ serve(async (req) => {
     if (taskError || !task) {
       console.error("Error fetching task:", taskError);
       return new Response(
-        JSON.stringify({ error: "Error fetching task data" }),
+        JSON.stringify({ error: "Error fetching task data", details: taskError }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Task data fetched successfully:", task);
 
     // Create email client
     const client = new SmtpClient();
@@ -63,7 +67,7 @@ serve(async (req) => {
         password: AWS_SECRET_ACCESS_KEY,
       });
 
-      const userName = task.assigned_user ? task.assigned_user.name : "A team member";
+      const userName = task.profiles ? task.profiles.name : "A team member";
       
       // Send email
       await client.send({
@@ -119,7 +123,7 @@ serve(async (req) => {
         });
         
       return new Response(
-        JSON.stringify({ error: "Failed to send email notification" }),
+        JSON.stringify({ error: "Failed to send email notification", details: String(emailError) }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

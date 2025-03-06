@@ -18,10 +18,11 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
   const [assignee, setAssignee] = React.useState<{name: string, email?: string} | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
-  // Fetch assignee details
+  // Fetch assignee details if not already included
   React.useEffect(() => {
     const fetchAssignee = async () => {
-      if (task.assignedTo) {
+      // Only fetch if we don't already have the assignee name
+      if (task.assignedTo && !task.assigneeName && !assignee) {
         const { data, error } = await supabase
           .from('profiles')
           .select('name')
@@ -31,11 +32,14 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
         if (!error && data) {
           setAssignee(data);
         }
+      } else if (task.assigneeName) {
+        // Use the provided assignee name
+        setAssignee({ name: task.assigneeName });
       }
     };
     
     fetchAssignee();
-  }, [task.assignedTo]);
+  }, [task.assignedTo, task.assigneeName, assignee]);
 
   // Format the due date to display as "Jan 12" or similar
   const formattedDate = format(new Date(task.dueDate), "MMM d");
@@ -109,7 +113,8 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayName = assignee?.name || 'Unknown';
+  // Determine the assignee name to display
+  const displayName = task.assigneeName || assignee?.name || 'Unknown';
 
   return (
     <div className={cn(

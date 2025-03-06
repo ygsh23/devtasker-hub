@@ -58,11 +58,11 @@ export function TaskBoard({
       {status === "todo" && (
         <CustomButton 
           onClick={onCreateTask}
-          className="mb-4"
+          className="mb-4 gap-2 flex items-center justify-center"
           variant="outline"
         >
-          <Plus size={16} className="mr-2" />
-          Add New Task
+          <Plus size={16} />
+          <span>Add New Task</span>
         </CustomButton>
       )}
       

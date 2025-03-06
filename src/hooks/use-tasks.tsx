@@ -18,9 +18,10 @@ export function useTasks() {
       
       if (!user) return;
 
+      // Fixed the query to properly handle the relationship
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, profiles:assigned_to(*)")
+        .select("*, assigned_to:profiles(id, name, avatar_url)")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -35,7 +36,8 @@ export function useTasks() {
         dueDate: new Date(task.due_date),
         priority: task.priority as Priority,  // Explicitly cast to Priority type
         status: task.status as TaskStatus,    // Explicitly cast to TaskStatus type
-        assignedTo: task.assigned_to,
+        assignedTo: task.assigned_to?.id || task.assigned_to, // Handle both object and string formats
+        assigneeName: task.assigned_to?.name || null, // Store assignee name for display
         createdBy: task.created_by,
         createdAt: new Date(task.created_at),
         updatedAt: new Date(task.updated_at)
@@ -86,6 +88,7 @@ export function useTasks() {
         priority: data.priority as Priority,  // Explicitly cast to Priority type
         status: data.status as TaskStatus,    // Explicitly cast to TaskStatus type
         assignedTo: data.assigned_to,
+        assigneeName: null, // We'll fetch this on the next refresh
         createdBy: data.created_by,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
@@ -206,6 +209,8 @@ export function useTasks() {
   // Send an email notification when a task is completed
   const sendTaskCompletionEmail = async (taskId: string, message?: string) => {
     try {
+      console.log("Sending email notification for task:", taskId);
+      
       const response = await supabase.functions.invoke("send-task-notification", {
         body: {
           taskId,
@@ -214,6 +219,7 @@ export function useTasks() {
       });
 
       if (response.error) {
+        console.error("Function response error:", response.error);
         throw new Error(response.error);
       }
 
@@ -239,14 +245,14 @@ export function useTasks() {
     return updateTask(taskId, { status });
   };
 
-  // Load tasks on component mount and when user changes
+  // Load tasks on component mount only once and when user changes
   React.useEffect(() => {
     if (user) {
       fetchTasks();
     }
   }, [user, fetchTasks]);
 
-  // Set up real-time subscription to tasks
+  // Set up real-time subscription to tasks for live updates
   React.useEffect(() => {
     if (!user) return;
 
